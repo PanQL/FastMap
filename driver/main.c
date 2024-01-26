@@ -36,12 +36,6 @@ struct sys_rt_parameters_struct;
 
 #define MODULE_NAME "dmap"
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
-#pragma message("Building for kernel 4.9.X!")
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
-#pragma message("Building for kernel 4.14.X!")
-#endif
-
 #ifdef __aarch64__
 #pragma message("Building for ARM64")
 #endif

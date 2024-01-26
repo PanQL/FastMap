@@ -33,15 +33,6 @@ struct min_heap {
 	int heap_size;
 };
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
-static void submit_bio_wait_endio(struct bio *bio)
-{
-	struct submit_bio_ret *ret = bio->bi_private;
-
-	ret->error = bio->bi_error;
-	complete(&ret->event);
-}
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
 static void submit_bio_wait_endio(struct bio *bio)
 {
 	struct submit_bio_ret *ret = bio->bi_private;
@@ -49,7 +40,6 @@ static void submit_bio_wait_endio(struct bio *bio)
 	ret->error = blk_status_to_errno(bio->bi_status);
 	complete(&ret->event);
 }
-#endif
 
 static struct min_heap *min_heap_create(void)
 {
@@ -289,11 +279,7 @@ void write_bio_async(struct tagged_page **p, int len)
 		DMAP_BGON(bio[i] == NULL);
 
 		DMAP_BGON(p[i]->pvd->bk.bdev == NULL);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
-		bio[i]->bi_bdev = p[i]->pvd->bk.bdev;
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
 		bio_set_dev(bio[i], p[i]->pvd->bk.bdev);
-#endif
 		bio_set_op_attrs(bio[i], REQ_OP_WRITE, 0);
 		bio[i]->bi_iter.bi_sector = p[i]->page->index << 3;
 

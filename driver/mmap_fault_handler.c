@@ -172,19 +172,11 @@ static int read_pages_bio(struct block_device *device, unsigned long *byte_offse
 	struct bio *bio = (struct bio *)__tmp;
 	int i;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
-	bio_init(bio);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
 	bio_init(bio, bio->bi_inline_vecs, num_pages);
-#endif
 
 	bio->bi_pool = NULL;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
-	bio->bi_bdev = (struct block_device *)device;
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
 	bio_set_dev(bio, (struct block_device *)device);
-#endif
 	bio_set_op_attrs(bio, REQ_OP_READ, 0);
 	bio->bi_iter.bi_sector = byte_offset[0] >> 9;
 
@@ -285,11 +277,7 @@ static int read_pages_file(struct vm_area_struct *vma, struct pr_vma_data *pvd, 
 #error "Using more than one pages is not supported in kernel_read()"
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
-	rd_retval = kernel_read(lower_file, pos, (char *)page_address(tagged_page->page), PAGE_SIZE);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
 	rd_retval = kernel_read(lower_file, page_address(tagged_page->page), PAGE_SIZE, &pos);
-#endif
 	if(rd_retval != PAGE_SIZE){
 		printk(KERN_ERR "[%s:%s:%d] kernel_read(...) returns %zd\n", __FILE__, __func__, __LINE__, rd_retval);
 		return 1;
@@ -356,13 +344,8 @@ static void dmap_add_or_update_rmap(struct vm_fault *vmf, struct pr_vma_data *pv
 	for(i = 0; i < MAX_RMAPS_PER_PAGE; i++){
 		if(pvr_is_valid(&tagged_page->rmap[i])){
 			if(pvr_get_vma(&tagged_page->rmap[i]) == vma){
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
-				if(pvr_get_vaddr(&tagged_page->rmap[i]) != (unsigned long)(vmf->virtual_address + (off * PAGE_SIZE))){
-					printk(KERN_ERR "[%lu != %lu]\n", pvr_get_vaddr(&tagged_page->rmap[i]), (unsigned long)(vmf->virtual_address + (off * PAGE_SIZE)));
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
 				if(pvr_get_vaddr(&tagged_page->rmap[i]) != (vmf->address + (off * PAGE_SIZE))){
 					printk(KERN_ERR "[%lu != %lu]\n", pvr_get_vaddr(&tagged_page->rmap[i]), vmf->address + (off * PAGE_SIZE));
-#endif
 					DMAP_BGON(1);
 				}
 				found = true;
@@ -379,11 +362,7 @@ static void dmap_add_or_update_rmap(struct vm_fault *vmf, struct pr_vma_data *pv
 		pvr = &(tagged_page->rmap[free_entry]);
 
 		pvr_set_idx(pvr, free_entry);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
-		pvr_set_vaddr(pvr, (unsigned long)vmf->virtual_address + (off * PAGE_SIZE));
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
 		pvr_set_vaddr(pvr, vmf->address + (off * PAGE_SIZE));
-#endif
 		pvr_set_vma(pvr, vma);
 		pvr_set_cpu(pvr, 0);
 		pvr_mk_valid(pvr);
@@ -500,11 +479,7 @@ int perma_getpage(struct vm_area_struct *vma, struct page **pagep, struct vm_fau
 	pvd = ((struct fastmap_info *)vma->vm_private_data)->pvd
 	DMAP_BGON(pvd == NULL);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
-	if(unlikely((unsigned long)vmf->virtual_address < vma->vm_start || (unsigned long)vmf->virtual_address >= vma->vm_end))
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
 	if(unlikely(vmf->address < vma->vm_start || vmf->address >= vma->vm_end))
-#endif
 		return -EFAULT;
 
 	check_file_size(pvd);
@@ -652,16 +627,10 @@ static void add_mm_counter_fast(struct mm_struct *mm, int member, int val)
  * The fault method: the entry point to the file
  */
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
-int perma_vma_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
 int perma_vma_fault(struct vm_fault *vmf)
-#endif
 {
 	int ret = 0;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
 	struct vm_area_struct *vma = vmf->vma;
-#endif
 
 	//ktime_t t1, t2;
 	DMAP_BGON((struct fastmap_info *)vma->vm_private_data == NULL);

@@ -170,16 +170,9 @@ static int wrapfs_unlink(struct inode *dir, struct dentry *dentry)
           rcu_read_lock();
           radix_tree_for_each_slot(slot, &pvd->rdx[cpu], &iter, start){
             p = radix_tree_deref_slot(slot);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
             radix_tree_iter_delete(&pvd->rdx[cpu], &iter, slot);
-#endif
             break;
           }
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
-					if(p != NULL){
-						radix_tree_delete(&pvd->rdx[cpu], p->page->index);
-					}
-#endif
           rcu_read_unlock();
 
           if(p != NULL)
@@ -189,16 +182,9 @@ static int wrapfs_unlink(struct inode *dir, struct dentry *dentry)
         rcu_read_lock();
         radix_tree_for_each_slot(slot, &pvd->rdx, &iter, start){
           p = radix_tree_deref_slot(slot);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
           radix_tree_iter_delete(&pvd->rdx, &iter, slot);
-#endif
           break;
         }
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
-				if(p != NULL){
-					radix_tree_delete(&pvd->rdx, p->page->index);
-				}
-#endif /* USE_PERCPU_RADIXTREE */
         rcu_read_unlock();
 #endif /* USE_PERCPU_RADIXTREE */
 
@@ -570,26 +556,6 @@ out_err:
 	return err;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
-static int wrapfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
-{
-	int err;
-	struct kstat lower_stat;
-	struct path lower_path;
-
-	wrapfs_get_lower_path(dentry, &lower_path);
-	err = vfs_getattr(&lower_path, &lower_stat);
-	if (err)
-		goto out;
-	fsstack_copy_attr_all(d_inode(dentry),
-			      d_inode(lower_path.dentry));
-	generic_fillattr(d_inode(dentry), stat);
-	stat->blocks = lower_stat.blocks;
-out:
-	wrapfs_put_lower_path(dentry, &lower_path);
-	return err;
-}
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
 static int wrapfs_getattr(const struct path *path, struct kstat *stat, u32 request_mask, unsigned int query_flags)
 {
 	int err;
@@ -609,7 +575,6 @@ out:
 	wrapfs_put_lower_path(dentry, &lower_path);
 	return err;
 }
-#endif
 
 static int
 wrapfs_setxattr(struct dentry *dentry, struct inode *inode, const char *name,

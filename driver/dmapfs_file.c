@@ -71,15 +71,9 @@ static void __clear_pvd(struct pr_vma_data *pvd)
         rcu_read_lock();
         radix_tree_for_each_slot(slot, &pvd->rdx[cpu], &iter, start){
           p = radix_tree_deref_slot(slot);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
           radix_tree_iter_delete(&pvd->rdx[cpu], &iter, slot);
-#endif
           break;
         }
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
-				if(p != NULL)
-					radix_tree_delete(&pvd->rdx[cpu], p->page->index);
-#endif
         rcu_read_unlock();
 
         if(p != NULL)
@@ -89,15 +83,9 @@ static void __clear_pvd(struct pr_vma_data *pvd)
     rcu_read_lock();
     radix_tree_for_each_slot(slot, &pvd->rdx, &iter, start){
       p = radix_tree_deref_slot(slot);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
       radix_tree_iter_delete(&pvd->rdx, &iter, slot);
-#endif
       break;
     }
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
-		if(p != NULL)
-			radix_tree_delete(&pvd->rdx, p->page->index);
-#endif
     rcu_read_unlock();
 #endif
 
@@ -122,36 +110,26 @@ void ino_cache_clear(void)
 	void **slot;
 	struct radix_tree_iter iter;
 	pgoff_t start = 0;
-	
+
 	while(true){
 		pvd = NULL;
 
-  	rcu_read_lock();
-  	radix_tree_for_each_slot(slot, &ino_pvd_cache, &iter, start){
-  		pvd = radix_tree_deref_slot(slot);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
-    	radix_tree_iter_delete(&ino_pvd_cache, &iter, slot);
-#endif
-    	break;
-  	}
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,10,0)
-		if(pvd != NULL)
-			radix_tree_delete(&ino_pvd_cache, (unsigned long)pvd);
-#endif
-  	rcu_read_unlock();	
+		rcu_read_lock();
+		radix_tree_for_each_slot(slot, &ino_pvd_cache, &iter, start){
+			pvd = radix_tree_deref_slot(slot);
+			radix_tree_iter_delete(&ino_pvd_cache, &iter, slot);
+			break;
+		}
+		rcu_read_unlock();
 
 		if(pvd == NULL)
-    	break;
+			break;
 
 		__clear_pvd(pvd);
 
 		if(pvd->bk.filp != NULL)
 			fput(pvd->bk.filp);
-#if 0
-    if(pvd->meta.f.m != NULL)
-    	vfree(pvd->meta.f.m);
-#endif
-    kfree(pvd);
+		kfree(pvd);
 	}
 }
 
